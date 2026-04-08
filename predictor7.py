@@ -15,12 +15,12 @@ st.set_page_config(
 # 加载模型
 @st.cache_resource
 def load_model():
-    return joblib.load('xgboost_model.pkl')
+    return joblib.load('stacking_model.pkl')
 
 try:
     model = load_model()
 except FileNotFoundError:
-    st.error("❌ xgboost_model.pkl 文件未找到，请确保该文件存在于项目目录中")
+    st.error("❌ stacking_model.pkl 文件未找到，请确保该文件存在于项目目录中")
     st.stop()
 except Exception as e:
     st.error(f"❌ 模型加载失败: {e}")
@@ -28,9 +28,9 @@ except Exception as e:
 
 # 读取 CSV 数据文件（将 pd.read_excel 改为 pd.read_csv）
 try:
-    test_dataset = pd.read_csv('expanded_data_744_rate18.6_corrected.csv', encoding='utf-8')
+    test_dataset = pd.read_csv('data.csv', encoding='utf-8')
 except FileNotFoundError:
-    st.error("❌ expanded_data_744_rate18.6_corrected.csv 文件未找到，请确保该文件存在于项目目录中")
+    st.error("❌ data.csv 文件未找到，请确保该文件存在于项目目录中")
     st.stop()
 except Exception as e:
     st.error(f"❌ 数据文件加载失败: {e}")
