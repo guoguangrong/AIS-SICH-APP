@@ -40,7 +40,7 @@ feature_cn_names = {
     "agitation": "躁动情况", "anc_total": "基线中性粒细胞计数", "af": "房颤病史"
 }
 
-# 风险阈值（简化版，只用于判断）
+# 风险阈值
 risk_thresholds_simple = {
     "age": 74,
     "nihss_admit": 12,
@@ -79,29 +79,30 @@ st.markdown("""
     .prediction-prob { font-size: 48px; font-weight: bold; color: white; margin: 20px 0; }
     .prediction-level { font-size: 28px; font-weight: bold; color: white; margin-bottom: 20px; }
     .prediction-advice { font-size: 16px; color: white; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px; margin-top: 15px; }
-    .risk-factor-card {
-        border-radius: 12px;
-        padding: 12px 15px;
-        margin-bottom: 8px;
+    hr { margin: 20px 0; }
+    .risk-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: #f8f9fa;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        border-radius: 10px;
+        background-color: #f8f9fa;
         border-left: 4px solid;
     }
-    .risk-factor-name {
+    .risk-name {
+        font-size: 14px;
         font-weight: 500;
-        font-size: 15px;
         color: #333;
     }
-    .risk-factor-value {
-        font-size: 15px;
+    .risk-value {
+        font-size: 14px;
         color: #555;
+        font-weight: 500;
     }
-    .risk-factor-high { border-left-color: #eb3349; background: #fff5f5; }
-    .risk-factor-mid { border-left-color: #f5576c; background: #fffaf0; }
-    .risk-factor-low { border-left-color: #11998e; background: #f0fff4; }
-    hr { margin: 20px 0; }
+    .risk-high { border-left-color: #eb3349; background-color: #fff5f5; }
+    .risk-mid { border-left-color: #f5576c; background-color: #fffaf0; }
+    .risk-low { border-left-color: #11998e; background-color: #f0fff4; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -236,49 +237,50 @@ if predict_btn:
     </div>
     """, unsafe_allow_html=True)
     
-    # ========== 简化的风险指标分析 ==========
-    # 构建指标列表
+    # ========== 简化的风险指标分析 - 使用st.markdown直接生成 ==========
+    
+    # 定义指标列表
     indicators = [
-        ("年龄", f"{age_num:.0f} 岁", age_num > 74, "🔴", "🟢"),
-        ("入院NIHSS评分", f"{nihss_admit_num:.0f} 分", nihss_admit_num > 12, "🔴", "🟢"),
-        ("基线收缩压", f"{sbp_baseline_num:.0f} mmHg", sbp_baseline_num > 146, "🔴", "🟢"),
-        ("基线BNP", f"{bnp_total_num:.0f} pg/mL", bnp_total_num > 1120, "🔴", "🟢"),
-        ("基线APTT", f"{aptt_total_num:.1f} 秒", aptt_total_num > 38.4, "🔴", "🟢"),
-        ("基线中性粒细胞计数", f"{anc_total_num:.1f} ×10^9/L", anc_total_num > 6.34, "🔴", "🟢"),
-        ("房颤病史", "是" if af == 1 else "否", af == 1, "🔴", "🟢"),
-        ("躁动情况", agitation_map[agitation], agitation >= 1, "🔴" if agitation >= 2 else "🟡", "🟢"),
-        ("发病至穿刺时间", f"{opt_num:.0f} 分钟", opt_num > 600, "🔴" if opt_num > 600 else ("🟡" if opt_num > 300 else "🟢"), "🟢")
+        ("年龄", f"{age_num:.0f} 岁", age_num > 74, age_num > 74, 74),
+        ("入院NIHSS评分", f"{nihss_admit_num:.0f} 分", nihss_admit_num > 12, nihss_admit_num > 12, 12),
+        ("基线收缩压", f"{sbp_baseline_num:.0f} mmHg", sbp_baseline_num > 146, sbp_baseline_num > 146, 146),
+        ("基线BNP", f"{bnp_total_num:.0f} pg/mL", bnp_total_num > 1120, bnp_total_num > 1120, 1120),
+        ("基线APTT", f"{aptt_total_num:.1f} 秒", aptt_total_num > 38.4, aptt_total_num > 38.4, 38.4),
+        ("基线中性粒细胞计数", f"{anc_total_num:.1f} ×10^9/L", anc_total_num > 6.34, anc_total_num > 6.34, 6.34),
+        ("房颤病史", "是" if af == 1 else "否", af == 1, af == 1, None),
+        ("躁动情况", agitation_map[agitation], agitation >= 1, agitation >= 2, None),
+        ("发病至穿刺时间", f"{opt_num:.0f} 分钟", opt_num > 600, opt_num > 600, 600)
     ]
     
-    risk_indicators_html = '<div style="max-height: 500px; overflow-y: auto;">'
+    # 构建HTML
+    risk_html = '<div style="max-height: 500px; overflow-y: auto;">'
     
-    for name, value, is_risk, icon_high, icon_low in indicators:
-        if is_risk:
-            if name == "躁动情况" and agitation == 1:
-                status_icon = "🟡"
-            elif name == "发病至穿刺时间" and 300 < opt_num <= 600:
-                status_icon = "🟡"
-            else:
-                status_icon = icon_high
-            card_class = "risk-factor-high" if status_icon == "🔴" else "risk-factor-mid"
+    for name, value, is_mid, is_high, threshold in indicators:
+        if is_high:
+            icon = "🔴"
+            css_class = "risk-high"
+        elif is_mid:
+            icon = "🟡"
+            css_class = "risk-mid"
         else:
-            status_icon = icon_low
-            card_class = "risk-factor-low"
+            icon = "🟢"
+            css_class = "risk-low"
         
-        risk_indicators_html += f"""
-        <div class="risk-factor-card {card_class}">
-            <span class="risk-factor-name">{status_icon} {name}</span>
-            <span class="risk-factor-value">{value}</span>
+        risk_html += f'''
+        <div class="risk-item {css_class}">
+            <span class="risk-name">{icon} {name}</span>
+            <span class="risk-value">{value}</span>
         </div>
-        """
+        '''
     
-    risk_indicators_html += '</div>'
-    risk_indicators_html += f"""
+    risk_html += '</div>'
+    risk_html += f'''
     <div style="background: #e8f4f8; border-radius: 12px; padding: 12px; margin-top: 10px;">
         <div style="font-size: 13px; color: #2c3e50;"><strong>💡 综合建议：</strong><br>{advice}</div>
     </div>
-    """
-    risk_analysis_placeholder.markdown(risk_indicators_html, unsafe_allow_html=True)
+    '''
+    
+    risk_analysis_placeholder.markdown(risk_html, unsafe_allow_html=True)
     
     # 输入摘要
     with st.expander("查看完整输入信息"):
