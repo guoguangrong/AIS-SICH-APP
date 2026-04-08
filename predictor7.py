@@ -26,27 +26,18 @@ except Exception as e:
     st.error(f"❌ 模型加载失败: {e}")
     st.stop()
 
-# 读取 CSV 数据文件（将 pd.read_excel 改为 pd.read_csv）
-try:
-    test_dataset = pd.read_csv('expanded_data_744_rate18.6_corrected.csv', encoding='utf-8')
-except FileNotFoundError:
-    st.error("❌ expanded_data_744_rate18.6_corrected.csv 文件未找到，请确保该文件存在于项目目录中")
-    st.stop()
-except Exception as e:
-    st.error(f"❌ 数据文件加载失败: {e}")
-    st.stop()
-
 # 按照模型训练时的顺序排列9个特征（根据SHAP重要性排序）
+# 这个顺序绝对不能改！！！
 feature_names = [
-    "bnp_total",       # 基线BNP
-    "sbp_baseline",    # 基线收缩压  
-    "opt",             # OPT (发病至穿刺时间)
-    "nihss_admit",     # 入院NIHSS评分
-    "aptt_total",      # 基线APTT
-    "age",             # 年龄
-    "agitation",       # 躁动
-    "anc_total",       # 基线ANC
-    "af"               # 房颤病史
+    "bnp_total",       # 0: 基线BNP (最重要)
+    "sbp_baseline",    # 1: 基线收缩压  
+    "opt",             # 2: OPT (发病至穿刺时间)
+    "nihss_admit",     # 3: 入院NIHSS评分
+    "aptt_total",      # 4: 基线APTT
+    "age",             # 5: 年龄
+    "agitation",       # 6: 躁动
+    "anc_total",       # 7: 基线ANC
+    "af"               # 8: 房颤病史
 ]
 
 # 特征中文名称映射
@@ -173,24 +164,16 @@ with left_col:
     col1, col2 = st.columns(2)
     
     with col1:
-        age_num = st.number_input(
-            "年龄 (岁)", 
+        # 注意：这里的输入框顺序与模型期望的顺序无关
+        # 只要在组装feature_values时按正确顺序即可
+        bnp_total_num = st.number_input(
+            "基线BNP (pg/mL)", 
             min_value=0.0, 
-            max_value=120.0,
-            value=65.0, 
-            step=1.0, 
+            max_value=50000.0,
+            value=476.0, 
+            step=10.0, 
             format="%.0f",
-            help="年龄 > 74岁 风险显著升高"
-        )
-        
-        nihss_admit_num = st.number_input(
-            "入院NIHSS评分 (分)", 
-            min_value=0.0, 
-            max_value=42.0,
-            value=10.0, 
-            step=1.0, 
-            format="%.0f",
-            help="NIHSS评分 > 12分 风险显著升高"
+            help="BNP > 1120pg/mL 风险升高3.49倍"
         )
         
         sbp_baseline_num = st.number_input(
@@ -213,31 +196,17 @@ with left_col:
             help="时间越长，缺血损伤越重，风险越高"
         )
         
-        bnp_total_num = st.number_input(
-            "基线BNP (pg/mL)", 
+        nihss_admit_num = st.number_input(
+            "入院NIHSS评分 (分)", 
             min_value=0.0, 
-            max_value=50000.0,
-            value=476.0, 
-            step=10.0, 
+            max_value=42.0,
+            value=10.0, 
+            step=1.0, 
             format="%.0f",
-            help="BNP > 1120pg/mL 风险升高3.49倍"
+            help="NIHSS评分 > 12分 风险升高2.45倍"
         )
     
     with col2:
-        af = st.selectbox(
-            "房颤病史",
-            options=[0, 1],
-            format_func=lambda x: "是" if x == 1 else "否",
-            help="房颤患者风险是非房颤者的14倍"
-        )
-        
-        agitation = st.selectbox(
-            "术后躁动情况",
-            options=[0, 1, 2, 3],
-            format_func=lambda x: agitation_map[x],
-            help="躁动程度越重，风险越高（剂量-反应关系）"
-        )
-        
         aptt_total_num = st.number_input(
             "基线APTT (秒)", 
             min_value=0.0, 
@@ -248,6 +217,23 @@ with left_col:
             help="APTT > 38.4秒 风险升高3.26倍"
         )
         
+        age_num = st.number_input(
+            "年龄 (岁)", 
+            min_value=0.0, 
+            max_value=120.0,
+            value=65.0, 
+            step=1.0, 
+            format="%.0f",
+            help="年龄 > 74岁 风险升高3.36倍"
+        )
+        
+        agitation = st.selectbox(
+            "术后躁动情况",
+            options=[0, 1, 2, 3],
+            format_func=lambda x: agitation_map[x],
+            help="躁动程度越重，风险越高（剂量-反应关系）"
+        )
+        
         anc_total_num = st.number_input(
             "基线中性粒细胞计数 (×10^9/L)", 
             min_value=0.0, 
@@ -256,6 +242,13 @@ with left_col:
             step=0.5, 
             format="%.1f",
             help="ANC > 6.34 风险升高2.11倍"
+        )
+        
+        af = st.selectbox(
+            "房颤病史",
+            options=[0, 1],
+            format_func=lambda x: "是" if x == 1 else "否",
+            help="房颤患者风险是非房颤者的14倍"
         )
     
     st.markdown("---")
@@ -271,17 +264,19 @@ with right_col:
     risk_analysis_placeholder = st.empty()
     
     if predict_btn:
-        # 按指定顺序组装输入值（必须与feature_names顺序一致）
+        # ========== 关键修改：必须按照feature_names的顺序组装！！！ ==========
+        # feature_names顺序: ["bnp_total", "sbp_baseline", "opt", "nihss_admit", 
+        #                      "aptt_total", "age", "agitation", "anc_total", "af"]
         feature_values = [
-            bnp_total_num,     # 基线BNP
-            sbp_baseline_num,  # 基线收缩压
-            opt_num,           # OPT
-            nihss_admit_num,   # 入院NIHSS评分
-            aptt_total_num,    # 基线APTT
-            age_num,           # 年龄
-            agitation,         # 躁动
-            anc_total_num,     # 基线ANC
-            af                 # 房颤病史
+            bnp_total_num,     # 0: 基线BNP
+            sbp_baseline_num,  # 1: 基线收缩压
+            opt_num,           # 2: OPT
+            nihss_admit_num,   # 3: 入院NIHSS评分
+            aptt_total_num,    # 4: 基线APTT
+            age_num,           # 5: 年龄
+            agitation,         # 6: 躁动
+            anc_total_num,     # 7: 基线ANC
+            af                 # 8: 房颤病史
         ]
         
         input_df = pd.DataFrame([feature_values], columns=feature_names)
@@ -331,7 +326,6 @@ with right_col:
         """, unsafe_allow_html=True)
         
         # ========== 风险指标分析 ==========
-        # 收集当前各指标的值
         feature_values_dict = {
             "age": age_num,
             "nihss_admit": nihss_admit_num,
@@ -344,10 +338,8 @@ with right_col:
             "anc_total": anc_total_num
         }
         
-        # 构建风险指标分析HTML
         risk_indicators_html = '<div style="max-height: 450px; overflow-y: auto;">'
         
-        # 定义特征顺序（按SHAP重要性排序）
         feature_order = ["bnp_total", "sbp_baseline", "opt", "nihss_admit", 
                         "aptt_total", "age", "agitation", "anc_total", "af"]
         
@@ -356,7 +348,6 @@ with right_col:
             threshold_info = risk_thresholds.get(feature)
             cn_name = feature_cn_names[feature]
             
-            # 判断风险状态
             is_high_risk = False
             risk_desc = ""
             
@@ -398,7 +389,6 @@ with right_col:
                     else:
                         risk_desc = f"✓ 低于阈值 ({threshold}{unit})"
             
-            # 根据风险状态选择样式
             is_risk_factor = False
             if (feature == "af" and value == 1) or (feature == "agitation" and value >= 1):
                 is_risk_factor = True
@@ -418,7 +408,6 @@ with right_col:
                 card_class = "risk-factor-low"
                 status_icon = "🟢"
             
-            # 格式化显示值
             if feature == "af":
                 display_value = "是" if value == 1 else "否"
             elif feature == "agitation":
@@ -433,7 +422,6 @@ with right_col:
                 unit = threshold_info["unit"] if threshold_info and threshold_info.get("unit") else ""
                 display_value = f"{value:.0f} {unit}".strip()
             
-            # 获取详细说明
             detail_desc = threshold_info["description"] if threshold_info else ""
             
             risk_indicators_html += f"""
@@ -450,7 +438,6 @@ with right_col:
         
         risk_indicators_html += '</div>'
         
-        # 添加综合建议
         risk_indicators_html += f"""
         <div style="background: #e8f4f8; border-radius: 12px; padding: 12px; margin-top: 10px;">
             <div style="font-size: 13px; color: #2c3e50;">
@@ -462,7 +449,7 @@ with right_col:
         
         risk_analysis_placeholder.markdown(risk_indicators_html, unsafe_allow_html=True)
         
-        # 显示输入摘要（折叠）
+        # 显示输入摘要
         with st.expander("查看完整输入信息"):
             opt_hours = opt_num / 60
             opt_display = f"{opt_num:.0f} 分钟 ({opt_hours:.1f} 小时)"
@@ -483,7 +470,6 @@ with right_col:
             st.dataframe(input_summary, use_container_width=True, hide_index=True)
     
     else:
-        # 未预测时的占位符
         prediction_placeholder.markdown("""
         <div style="background: #f8f9fa; border-radius: 20px; padding: 60px 30px; text-align: center; border: 2px dashed #dee2e6;">
             <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
@@ -500,6 +486,5 @@ with right_col:
         </div>
         """, unsafe_allow_html=True)
 
-# 添加使用说明
 st.markdown("---")
 st.caption("注：本预测结果仅供参考，不能替代专业医疗建议。如有疑问，请咨询专业医生。")
