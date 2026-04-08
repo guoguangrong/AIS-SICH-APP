@@ -15,13 +15,13 @@ st.set_page_config(
 # 加载模型（使用相对最稳定的 SVM）
 @st.cache_resource
 def load_model():
-    return joblib.load('svm_model.pkl')
+    return joblib.load('decision_tree_model.pkl')
 
 try:
     model = load_model()
     st.success("✅ 模型加载成功")
 except FileNotFoundError:
-    st.error("❌ svm_model.pkl 文件未找到")
+    st.error("❌ decision_tree_model.pkl 文件未找到")
     st.stop()
 except Exception as e:
     st.error(f"❌ 模型加载失败: {e}")
