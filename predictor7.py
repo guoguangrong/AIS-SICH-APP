@@ -91,12 +91,12 @@ with left_col:
     with col1:
         bnp_total_num = st.number_input("基线BNP (pg/mL)", min_value=0.0, max_value=50000.0, value=476.0, step=10.0, format="%.0f")
         sbp_baseline_num = st.number_input("基线收缩压 (mmHg)", min_value=0.0, max_value=300.0, value=130.0, step=1.0, format="%.0f")
-        opt_num = st.number_input("发病至穿刺时间 (分钟)", min_value=0.0, max_value=1440.0, value=450.0, step=5.0, format="%.0f")
+        opt_num = st.number_input("发病至穿刺时间 (分钟)", min_value=0.0, max_value=30000.0, value=450.0, step=5.0, format="%.0f")
         nihss_admit_num = st.number_input("入院NIHSS评分 (分)", min_value=0.0, max_value=42.0, value=10.0, step=1.0, format="%.0f")
     
     with col2:
-        aptt_total_num = st.number_input("基线APTT (秒)", min_value=0.0, max_value=120.0, value=36.9, step=1.0, format="%.1f")
-        age_num = st.number_input("年龄 (岁)", min_value=0.0, max_value=120.0, value=65.0, step=1.0, format="%.0f")
+        aptt_total_num = st.number_input("基线APTT (秒)", min_value=0.0, max_value=12000.0, value=36.9, step=1.0, format="%.1f")
+        age_num = st.number_input("年龄 (岁)", min_value=0.0, max_value=220.0, value=65.0, step=1.0, format="%.0f")
         agitation = st.selectbox("术后躁动情况", options=[0, 1, 2, 3], format_func=lambda x: agitation_map[x])
         anc_total_num = st.number_input("基线中性粒细胞计数 (×10^9/L)", min_value=0.0, max_value=50.0, value=8.8, step=0.5, format="%.1f")
         af = st.selectbox("房颤病史", options=[0, 1], format_func=lambda x: "是" if x == 1 else "否")
@@ -112,15 +112,15 @@ def calculate_rule_based_risk(values_dict):
     
     # 年龄
     if values_dict['age'] > 74:
-        score += 2
+        score += 12
     
     # NIHSS评分
     if values_dict['nihss_admit'] > 12:
-        score += 3
+        score += 19
     
     # 收缩压
     if values_dict['sbp_baseline'] > 146:
-        score += 3
+        score += 13
     
     # BNP
     if values_dict['bnp_total'] > 1120:
@@ -128,18 +128,18 @@ def calculate_rule_based_risk(values_dict):
     
     # APTT
     if values_dict['aptt_total'] > 38.4:
-        score += 2
+        score += 8
     
     # ANC
     if values_dict['anc_total'] > 6.34:
-        score += 1
+        score += 8
     
     # 房颤
     if values_dict['af'] == 1:
-        score += 4
+        score += 10
     
     # 躁动
-    agitation_scores = {0: 0, 1: 4, 2: 5, 3: 6}
+    agitation_scores = {0: 0, 1: 14, 2: 15, 3: 16}
     score += agitation_scores.get(values_dict['agitation'], 0)
     
     # OPT
