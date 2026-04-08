@@ -188,7 +188,7 @@ with right_col:
         
         # ========== 混合预测：加权平均 ==========
         # 模型权重0.5，规则权重0.5
-        final_risk = model_risk_calibrated * 0.5 + rule_risk * 0.5
+        final_risk = model_risk_calibrated * 0.25 + rule_risk * 0.75
         
         # 根据风险因素数量动态调整权重
         high_risk_count = 0
