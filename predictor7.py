@@ -26,53 +26,53 @@ except Exception as e:
     st.error(f"❌ 模型加载失败: {e}")
     st.stop()
 
-# 读取 CSV 数据文件
+# 读取 CSV 数据文件（将 pd.read_excel 改为 pd.read_csv）
 try:
-    test_dataset = pd.read_csv('test_data_raw.csv', encoding='utf-8')
+    test_dataset = pd.read_csv('expanded_data_744_rate18.6_corrected.csv', encoding='utf-8')
 except FileNotFoundError:
-    st.error("❌ test_data_raw.csv 文件未找到，请确保该文件存在于项目目录中")
+    st.error("❌ expanded_data_744_rate18.6_corrected.csv 文件未找到，请确保该文件存在于项目目录中")
     st.stop()
 except Exception as e:
     st.error(f"❌ 数据文件加载失败: {e}")
     st.stop()
 
-# 按照指定顺序排列9个特征变量（根据正文SHAP分析结果）
+# 按照模型训练时的顺序排列9个特征（根据SHAP重要性排序）
 feature_names = [
-    "age",               # 年龄
-    "nihss_admit",       # 入院NIHSS评分
-    "sbp_baseline",      # 基线收缩压
-    "opt",               # OPT (发病至穿刺时间)
-    "af",                # 房颤病史
-    "agitation",         # 躁动
-    "bnp_total",         # 基线BNP
-    "aptt_total",        # 基线APTT
-    "anc_total"          # 基线ANC
+    "bnp_total",       # 基线BNP
+    "sbp_baseline",    # 基线收缩压  
+    "opt",             # OPT (发病至穿刺时间)
+    "nihss_admit",     # 入院NIHSS评分
+    "aptt_total",      # 基线APTT
+    "age",             # 年龄
+    "agitation",       # 躁动
+    "anc_total",       # 基线ANC
+    "af"               # 房颤病史
 ]
 
 # 特征中文名称映射
 feature_cn_names = {
-    "age": "年龄",
-    "nihss_admit": "入院NIHSS评分",
+    "bnp_total": "基线BNP",
     "sbp_baseline": "基线收缩压",
     "opt": "发病至穿刺时间",
-    "af": "房颤病史",
-    "agitation": "躁动情况",
-    "bnp_total": "基线BNP",
+    "nihss_admit": "入院NIHSS评分",
     "aptt_total": "基线APTT",
-    "anc_total": "基线ANC"
+    "age": "年龄",
+    "agitation": "躁动情况",
+    "anc_total": "基线中性粒细胞计数",
+    "af": "房颤病史"
 }
 
-# 特征的风险阈值参考（基于论文中的阈值效应分析）
+# 风险阈值参考（基于论文中的阈值效应分析）
 risk_thresholds = {
-    "age": {"threshold": 74, "unit": "岁", "direction": "higher", "description": "年龄 > 74岁风险显著升高"},
-    "nihss_admit": {"threshold": 12, "unit": "分", "direction": "higher", "description": "NIHSS > 12分风险显著升高"},
-    "sbp_baseline": {"threshold": 146, "unit": "mmHg", "direction": "higher", "description": "收缩压 > 146mmHg风险升高3.29倍"},
+    "age": {"threshold": 74, "unit": "岁", "direction": "higher", "or_value": 3.36, "description": "年龄 > 74岁 风险升高3.36倍"},
+    "nihss_admit": {"threshold": 12, "unit": "分", "direction": "higher", "or_value": 2.45, "description": "NIHSS > 12分 风险升高2.45倍"},
+    "sbp_baseline": {"threshold": 146, "unit": "mmHg", "direction": "higher", "or_value": 3.29, "description": "收缩压 > 146mmHg 风险升高3.29倍"},
     "opt": {"threshold": None, "unit": "分钟", "direction": "higher", "description": "时间越长，缺血损伤越重，风险越高"},
-    "af": {"threshold": 1, "unit": "", "direction": "positive", "description": "房颤患者风险是非房颤者的14倍"},
-    "agitation": {"threshold": 1, "unit": "", "direction": "positive", "description": "躁动程度越重，风险越高（剂量-反应关系）"},
-    "bnp_total": {"threshold": 1120, "unit": "pg/mL", "direction": "higher", "description": "BNP > 1120pg/mL风险升高3.49倍"},
-    "aptt_total": {"threshold": 38.4, "unit": "秒", "direction": "higher", "description": "APTT > 38.4秒风险升高3.26倍"},
-    "anc_total": {"threshold": 6.34, "unit": "×10^9/L", "direction": "higher", "description": "ANC > 6.34风险升高2.11倍"}
+    "af": {"threshold": 1, "unit": "", "direction": "positive", "or_value": 14.08, "description": "房颤患者风险是非房颤者的14倍"},
+    "agitation": {"threshold": 1, "unit": "", "direction": "positive", "or_values": {1: 4.01, 2: 16.75, 3: 79.02}, "description": "躁动程度越重，风险越高（剂量-反应关系）"},
+    "bnp_total": {"threshold": 1120, "unit": "pg/mL", "direction": "higher", "or_value": 3.49, "description": "BNP > 1120pg/mL 风险升高3.49倍"},
+    "aptt_total": {"threshold": 38.4, "unit": "秒", "direction": "higher", "or_value": 3.26, "description": "APTT > 38.4秒 风险升高3.26倍"},
+    "anc_total": {"threshold": 6.34, "unit": "×10^9/L", "direction": "higher", "or_value": 2.11, "description": "ANC > 6.34 风险升高2.11倍"}
 }
 
 # 躁动情况映射
@@ -130,7 +130,6 @@ st.markdown("""
         margin-top: 15px;
     }
     .risk-factor-card {
-        background: #f8f9fa;
         border-radius: 12px;
         padding: 15px;
         margin-bottom: 10px;
@@ -167,7 +166,7 @@ st.title("急性缺血性脑卒中血管内治疗术后症状性出血转化风�
 st.markdown("### 请填写以下信息，点击预测获取风险评估结果")
 st.markdown("---")
 
-# 创建三列布局：左侧输入区，右侧结果区（分为上部分预测结果，下部分风险指标分析）
+# 创建左右两列布局
 left_col, right_col = st.columns([1.2, 0.8])
 
 with left_col:
@@ -213,6 +212,16 @@ with left_col:
             format="%.0f",
             help="时间越长，缺血损伤越重，风险越高"
         )
+        
+        bnp_total_num = st.number_input(
+            "基线BNP (pg/mL)", 
+            min_value=0.0, 
+            max_value=50000.0,
+            value=476.0, 
+            step=10.0, 
+            format="%.0f",
+            help="BNP > 1120pg/mL 风险升高3.49倍"
+        )
     
     with col2:
         af = st.selectbox(
@@ -227,16 +236,6 @@ with left_col:
             options=[0, 1, 2, 3],
             format_func=lambda x: agitation_map[x],
             help="躁动程度越重，风险越高（剂量-反应关系）"
-        )
-        
-        bnp_total_num = st.number_input(
-            "基线BNP (pg/mL)", 
-            min_value=0.0, 
-            max_value=50000.0,
-            value=476.0, 
-            step=10.0, 
-            format="%.0f",
-            help="BNP > 1120pg/mL 风险升高3.49倍"
         )
         
         aptt_total_num = st.number_input(
@@ -272,10 +271,17 @@ with right_col:
     risk_analysis_placeholder = st.empty()
     
     if predict_btn:
-        # 按指定顺序组装输入值
+        # 按指定顺序组装输入值（必须与feature_names顺序一致）
         feature_values = [
-            age_num, nihss_admit_num, sbp_baseline_num, opt_num,
-            af, agitation, bnp_total_num, aptt_total_num, anc_total_num
+            bnp_total_num,     # 基线BNP
+            sbp_baseline_num,  # 基线收缩压
+            opt_num,           # OPT
+            nihss_admit_num,   # 入院NIHSS评分
+            aptt_total_num,    # 基线APTT
+            age_num,           # 年龄
+            agitation,         # 躁动
+            anc_total_num,     # 基线ANC
+            af                 # 房颤病史
         ]
         
         input_df = pd.DataFrame([feature_values], columns=feature_names)
@@ -288,7 +294,7 @@ with right_col:
             st.error(f"模型预测失败: {e}")
             st.stop()
         
-        # 根据阈值划分风险等级
+        # 根据风险概率划分等级
         if risk_prob < 0.30:
             pred_class = "低风险"
             advice = f"模型预测您的症状性出血风险概率为 {risk_prob:.1%}，属于低风险。建议继续保持当前治疗方案，定期随访。"
@@ -308,9 +314,7 @@ with right_col:
             <div class="prediction-title">📈 风险评估结果</div>
             <div class="prediction-prob">{risk_prob:.1%}</div>
             <div class="prediction-level">{pred_class}</div>
-            <div class="prediction-advice">
-                💡 {advice}
-            </div>
+            <div class="prediction-advice">💡 {advice}</div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -318,7 +322,7 @@ with right_col:
         st.markdown("""
         <div style="background: #f8f9fa; border-radius: 12px; padding: 15px; margin-top: 15px;">
             <div style="font-size: 14px; color: #6c757d; margin-bottom: 10px;">风险阈值说明</div>
-            <div style="display: flex; justify-content: space-between;">
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
                 <div><span style="color: #11998e;">●</span> 低风险: &lt;30%</div>
                 <div><span style="color: #f5576c;">●</span> 中风险: 30%-70%</div>
                 <div><span style="color: #eb3349;">●</span> 高风险: &gt;70%</div>
@@ -327,7 +331,7 @@ with right_col:
         """, unsafe_allow_html=True)
         
         # ========== 风险指标分析 ==========
-        # 收集当前各指标的值和风险状态
+        # 收集当前各指标的值
         feature_values_dict = {
             "age": age_num,
             "nihss_admit": nihss_admit_num,
@@ -341,9 +345,9 @@ with right_col:
         }
         
         # 构建风险指标分析HTML
-        risk_indicators_html = '<div style="max-height: 400px; overflow-y: auto;">'
+        risk_indicators_html = '<div style="max-height: 450px; overflow-y: auto;">'
         
-        # 定义特征顺序（按重要性排序）
+        # 定义特征顺序（按SHAP重要性排序）
         feature_order = ["bnp_total", "sbp_baseline", "opt", "nihss_admit", 
                         "aptt_total", "age", "agitation", "anc_total", "af"]
         
@@ -357,25 +361,25 @@ with right_col:
             risk_desc = ""
             
             if threshold_info:
-                threshold = threshold_info["threshold"]
+                threshold = threshold_info.get("threshold")
                 direction = threshold_info["direction"]
-                unit = threshold_info["unit"]
+                unit = threshold_info.get("unit", "")
                 
                 if feature == "af":
                     is_high_risk = (value == 1)
                     risk_desc = "⚠️ 高风险因素" if is_high_risk else "✓ 正常"
                 elif feature == "agitation":
                     is_high_risk = (value >= 1)
+                    or_values = threshold_info.get("or_values", {})
                     if value == 0:
                         risk_desc = "✓ 正常"
                     elif value == 1:
-                        risk_desc = "⚠️ 轻度风险 (OR=4.01)"
+                        risk_desc = f"⚠️ 轻度风险 (OR={or_values.get(1, 4.01)})"
                     elif value == 2:
-                        risk_desc = "⚠️ 中度风险 (OR=16.75)"
+                        risk_desc = f"⚠️ 中度风险 (OR={or_values.get(2, 16.75)})"
                     else:
-                        risk_desc = "⚠️ 重度风险 (OR=79.02)"
+                        risk_desc = f"⚠️ 重度风险 (OR={or_values.get(3, 79.02)})"
                 elif feature == "opt":
-                    # OPT没有明确阈值，按时间长度分级
                     if value < 300:
                         risk_desc = "✓ 时间较短"
                     elif value < 600:
@@ -389,16 +393,25 @@ with right_col:
                         is_high_risk = (value < threshold)
                     
                     if is_high_risk:
-                        risk_desc = f"⚠️ 超过阈值 ({threshold}{unit})"
+                        or_value = threshold_info.get("or_value", "")
+                        risk_desc = f"⚠️ 超过阈值 ({threshold}{unit})，OR={or_value}"
                     else:
                         risk_desc = f"✓ 低于阈值 ({threshold}{unit})"
             
             # 根据风险状态选择样式
-            if (feature == "af" and value == 1) or (feature == "agitation" and value >= 1) or \
-               (feature in ["age", "nihss_admit", "sbp_baseline", "bnp_total", "aptt_total", "anc_total"] and is_high_risk):
+            is_risk_factor = False
+            if (feature == "af" and value == 1) or (feature == "agitation" and value >= 1):
+                is_risk_factor = True
+            elif feature in ["age", "nihss_admit", "sbp_baseline", "bnp_total", "aptt_total", "anc_total"]:
+                if (threshold_info and threshold_info.get("direction") == "higher" and value > threshold_info.get("threshold", 999)):
+                    is_risk_factor = True
+                elif (threshold_info and threshold_info.get("direction") == "lower" and value < threshold_info.get("threshold", 0)):
+                    is_risk_factor = True
+            
+            if is_risk_factor:
                 card_class = "risk-factor-high"
                 status_icon = "🔴"
-            elif feature in ["opt"] and value >= 600:
+            elif feature == "opt" and value > 300:
                 card_class = "risk-factor-mid"
                 status_icon = "🟡"
             else:
@@ -417,7 +430,8 @@ with right_col:
             elif feature == "aptt_total":
                 display_value = f"{value:.1f} 秒"
             else:
-                display_value = f"{value:.0f} {threshold_info['unit'] if threshold_info and threshold_info['unit'] else ''}".strip()
+                unit = threshold_info["unit"] if threshold_info and threshold_info.get("unit") else ""
+                display_value = f"{value:.0f} {unit}".strip()
             
             # 获取详细说明
             detail_desc = threshold_info["description"] if threshold_info else ""
@@ -436,7 +450,7 @@ with right_col:
         
         risk_indicators_html += '</div>'
         
-        # 添加总体建议
+        # 添加综合建议
         risk_indicators_html += f"""
         <div style="background: #e8f4f8; border-radius: 12px; padding: 12px; margin-top: 10px;">
             <div style="font-size: 13px; color: #2c3e50;">
