@@ -60,7 +60,7 @@ st.markdown("""
 <style>
     .stNumberInput label, .stSelectbox label { font-size: 16px !important; font-weight: 500 !important; }
     .stNumberInput input { font-size: 18px !important; }
-    .prediction-card { border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+    .prediction-card { border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.1); margin-top: 30px; }
     .risk-low { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
     .risk-medium { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
     .risk-high { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
@@ -82,19 +82,19 @@ st.title("急性缺血性脑卒中血管内治疗术后症状性出血转化风�
 st.markdown("### 请填写以下信息，点击预测获取风险评估结果")
 st.markdown("---")
 
-# ========== 布局：左边5个，右边4个 ==========
-left_col, right_col = st.columns([1.2, 0.8])
+# ========== 三列布局：左边5个，中间4个，右边预测结果 ==========
+col_left, col_middle, col_right = st.columns([1.2, 1, 1])
 
-with left_col:
-    # 左边区域 - 5个输入框
+with col_left:
+    st.markdown("##### 临床指标")
     bnp_total_num = st.number_input("基线BNP (pg/mL)", min_value=0.0, max_value=50000.0, value=476.0, step=10.0, format="%.0f")
     sbp_baseline_num = st.number_input("基线收缩压 (mmHg)", min_value=0.0, max_value=300.0, value=130.0, step=1.0, format="%.0f")
     opt_num = st.number_input("发病至穿刺时间 (分钟)", min_value=0.0, max_value=30000.0, value=450.0, step=5.0, format="%.0f")
     nihss_admit_num = st.number_input("入院NIHSS评分 (分)", min_value=0.0, max_value=42.0, value=10.0, step=1.0, format="%.0f")
     anc_total_num = st.number_input("基线中性粒细胞计数 (×10^9/L)", min_value=0.0, max_value=50.0, value=8.8, step=0.5, format="%.1f")
 
-with right_col:
-    # 右边区域 - 4个输入框（包含预测结果）
+with col_middle:
+    st.markdown("##### 凝血与基础指标")
     aptt_total_num = st.number_input("基线APTT (秒)", min_value=0.0, max_value=12000.0, value=36.9, step=1.0, format="%.1f")
     age_num = st.number_input("年龄 (岁)", min_value=0.0, max_value=220.0, value=65.0, step=1.0, format="%.0f")
     agitation = st.selectbox("术后躁动情况", options=[0, 1, 2, 3], format_func=lambda x: agitation_map[x])
@@ -102,13 +102,12 @@ with right_col:
     
     st.markdown("---")
     predict_btn = st.button("预测", type="primary", use_container_width=True)
-    
-    # 预测结果显示区域（在右侧按钮下方）
-    st.markdown("### 📊 预测结果")
+
+with col_right:
+    st.markdown("##### 预测结果")
     prediction_placeholder = st.empty()
     
-    # 风险指标分析显示区域（在预测结果下方）
-    st.markdown("### 🔍 风险指标分析")
+    st.markdown("##### 风险指标分析")
     risk_analysis_placeholder = st.empty()
 
 # 定义基于规则的评分函数
@@ -243,7 +242,7 @@ if predict_btn:
         "aptt_total": aptt_total_num, "anc_total": anc_total_num
     }
     
-    risk_indicators_html = '<div style="max-height: 400px; overflow-y: auto;">'
+    risk_indicators_html = '<div style="max-height: 500px; overflow-y: auto;">'
     
     for feature, threshold_info in risk_thresholds.items():
         value = feature_values_dict.get(feature, 0)
@@ -308,7 +307,7 @@ if predict_btn:
     """
     risk_analysis_placeholder.markdown(risk_indicators_html, unsafe_allow_html=True)
     
-    # 输入摘要
+    # 输入摘要（可折叠）
     with st.expander("查看完整输入信息"):
         opt_hours = opt_num / 60
         input_summary = pd.DataFrame({
@@ -323,9 +322,10 @@ if predict_btn:
 
 else:
     prediction_placeholder.markdown("""
-    <div style="background: #f8f9fa; border-radius: 20px; padding: 60px 30px; text-align: center; border: 2px dashed #dee2e6;">
-        <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
-        <div style="font-size: 18px; color: #6c757d;">填写左侧信息后点击"预测"按钮</div>
+    <div style="background: #f8f9fa; border-radius: 20px; padding: 40px 20px; text-align: center; border: 2px dashed #dee2e6;">
+        <div style="font-size: 36px; margin-bottom: 15px;">📊</div>
+        <div style="font-size: 16px; color: #6c757d;">填写左侧信息后点击"预测"按钮</div>
+        <div style="font-size: 13px; color: #adb5bd; margin-top: 8px;">将在此处显示风险评估结果</div>
     </div>
     """, unsafe_allow_html=True)
     risk_analysis_placeholder.markdown("""
