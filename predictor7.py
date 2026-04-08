@@ -42,25 +42,45 @@ feature_cn_names = {
 
 # 风险阈值和OR值（基于论文）
 risk_thresholds = {
-    "age": {"threshold": 74, "unit": "岁", "or_value": 10.36, "weight": 2},
-    "nihss_admit": {"threshold": 12, "unit": "分", "or_value": 32.45, "weight": 2},
-    "sbp_baseline": {"threshold": 146, "unit": "mmHg", "or_value": 18.29, "weight": 2},
-    "bnp_total": {"threshold": 1120, "unit": "pg/mL", "or_value": 13.49, "weight": 2},
-    "aptt_total": {"threshold": 38.4, "unit": "秒", "or_value": 13.26, "weight": 2},
-    "anc_total": {"threshold": 6.34, "unit": "×10^9/L", "or_value": 2.11, "weight": 1},
-    "af": {"threshold": 1, "unit": "", "or_value": 44.08, "weight": 3},
-    "agitation": {"levels": {0: 0, 1: 2, 2: 3, 3: 4}, "or_values": {1: 4.01, 2: 50.75, 3: 79.02}, "weight": "dynamic"},
-    "opt": {"thresholds": [(300, 1), (600, 2)], "unit": "分钟", "weight": "dynamic"}
+    "age": {"threshold": 74, "unit": "岁", "or_value": 10.36, "weight": 2, "description": "年龄 > 74岁 风险升高3.36倍"},
+    "nihss_admit": {"threshold": 12, "unit": "分", "or_value": 32.45, "weight": 2, "description": "NIHSS > 12分 风险升高2.45倍"},
+    "sbp_baseline": {"threshold": 146, "unit": "mmHg", "or_value": 18.29, "weight": 2, "description": "收缩压 > 146mmHg 风险升高3.29倍"},
+    "bnp_total": {"threshold": 1120, "unit": "pg/mL", "or_value": 13.49, "weight": 2, "description": "BNP > 1120pg/mL 风险升高3.49倍"},
+    "aptt_total": {"threshold": 38.4, "unit": "秒", "or_value": 13.26, "weight": 2, "description": "APTT > 38.4秒 风险升高3.26倍"},
+    "anc_total": {"threshold": 6.34, "unit": "×10^9/L", "or_value": 2.11, "weight": 1, "description": "ANC > 6.34 风险升高2.11倍"},
+    "af": {"threshold": 1, "unit": "", "or_value": 44.08, "weight": 3, "description": "房颤患者风险是非房颤者的14倍"},
+    "agitation": {"levels": {0: 0, 1: 2, 2: 3, 3: 4}, "or_values": {1: 4.01, 2: 50.75, 3: 79.02}, "weight": "dynamic", "description": "躁动程度越重，风险越高（剂量-反应关系）"},
+    "opt": {"thresholds": [(300, 1), (600, 2)], "unit": "分钟", "weight": "dynamic", "description": "时间越长，缺血损伤越重，风险越高"}
 }
 
 agitation_map = {0: "无躁动", 1: "轻度躁动", 2: "中度躁动", 3: "重度躁动"}
 
-# CSS样式
+# CSS样式（将变量字体调大2个字号）
 st.markdown("""
 <style>
-    .stNumberInput label, .stSelectbox label { font-size: 16px !important; font-weight: 500 !important; }
-    .stNumberInput input { font-size: 18px !important; }
-    .prediction-card { border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.1); margin-top: 30px; }
+    /* 输入框标签字体加大 */
+    .stNumberInput label, .stSelectbox label {
+        font-size: 18px !important;
+        font-weight: 500 !important;
+    }
+    
+    /* 输入框数值字体加大 */
+    .stNumberInput input {
+        font-size: 20px !important;
+    }
+    
+    /* 下拉选择框字体加大 */
+    .stSelectbox div[data-baseweb="select"] span {
+        font-size: 18px !important;
+    }
+    
+    .prediction-card {
+        border-radius: 20px;
+        padding: 30px;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        margin-top: 30px;
+    }
     .risk-low { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
     .risk-medium { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
     .risk-high { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
@@ -68,12 +88,24 @@ st.markdown("""
     .prediction-prob { font-size: 48px; font-weight: bold; color: white; margin: 20px 0; }
     .prediction-level { font-size: 28px; font-weight: bold; color: white; margin-bottom: 20px; }
     .prediction-advice { font-size: 16px; color: white; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px; margin-top: 15px; }
-    .risk-factor-card { border-radius: 12px; padding: 15px; margin-bottom: 10px; border-left: 4px solid; }
+    .risk-factor-card {
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-left: 4px solid;
+    }
     .risk-factor-high { border-left-color: #eb3349; background: #fff5f5; }
     .risk-factor-mid { border-left-color: #f5576c; background: #fffaf0; }
     .risk-factor-low { border-left-color: #11998e; background: #f0fff4; }
-    .risk-factor-title { font-weight: bold; font-size: 15px; margin-bottom: 5px; }
-    .risk-factor-value { font-size: 13px; color: #6c757d; }
+    .risk-factor-title {
+        font-weight: bold;
+        font-size: 16px;
+        margin-bottom: 5px;
+    }
+    .risk-factor-value {
+        font-size: 14px;
+        color: #6c757d;
+    }
     hr { margin: 20px 0; }
 </style>
 """, unsafe_allow_html=True)
@@ -86,7 +118,6 @@ st.markdown("---")
 col_left, col_middle, col_right = st.columns([1.2, 1, 1])
 
 with col_left:
-    st.markdown("##### 临床指标")
     bnp_total_num = st.number_input("基线BNP (pg/mL)", min_value=0.0, max_value=50000.0, value=476.0, step=10.0, format="%.0f")
     sbp_baseline_num = st.number_input("基线收缩压 (mmHg)", min_value=0.0, max_value=300.0, value=130.0, step=1.0, format="%.0f")
     opt_num = st.number_input("发病至穿刺时间 (分钟)", min_value=0.0, max_value=30000.0, value=450.0, step=5.0, format="%.0f")
@@ -94,7 +125,6 @@ with col_left:
     anc_total_num = st.number_input("基线中性粒细胞计数 (×10^9/L)", min_value=0.0, max_value=50.0, value=8.8, step=0.5, format="%.1f")
 
 with col_middle:
-    st.markdown("##### 凝血与基础指标")
     aptt_total_num = st.number_input("基线APTT (秒)", min_value=0.0, max_value=12000.0, value=36.9, step=1.0, format="%.1f")
     age_num = st.number_input("年龄 (岁)", min_value=0.0, max_value=220.0, value=65.0, step=1.0, format="%.0f")
     agitation = st.selectbox("术后躁动情况", options=[0, 1, 2, 3], format_func=lambda x: agitation_map[x])
@@ -104,10 +134,7 @@ with col_middle:
     predict_btn = st.button("预测", type="primary", use_container_width=True)
 
 with col_right:
-    st.markdown("##### 预测结果")
     prediction_placeholder = st.empty()
-    
-    st.markdown("##### 风险指标分析")
     risk_analysis_placeholder = st.empty()
 
 # 定义基于规则的评分函数
@@ -156,7 +183,7 @@ def calculate_rule_based_risk(values_dict):
     
     # 计算概率（基于训练集的18.2%基线风险）
     baseline_risk = 0.182
-    risk_multiplier = 1 + (score / max_score) * 3  # 最大风险放大4倍
+    risk_multiplier = 1 + (score / max_score) * 3
     risk_prob = min(0.85, baseline_risk * risk_multiplier)
     
     return risk_prob, score
@@ -169,13 +196,12 @@ if predict_btn:
     # ========== 方法1：模型预测 ==========
     try:
         proba = model.predict_proba(input_df)[0]
-        model_risk = proba[1]  # 高风险概率
-        # 校准模型输出（基于诊断结果，SVM输出约31%，需要校准）
-        model_risk_calibrated = model_risk * 0.65  # 校准系数
+        model_risk = proba[1]
+        model_risk_calibrated = model_risk * 0.65
         model_risk_calibrated = max(0.05, min(model_risk_calibrated, 0.85))
     except Exception as e:
         st.error(f"模型预测失败: {e}")
-        model_risk_calibrated = 0.18  # 默认基线风险
+        model_risk_calibrated = 0.18
     
     # ========== 方法2：基于规则的评分 ==========
     values_dict = {
@@ -186,11 +212,9 @@ if predict_btn:
     }
     rule_risk, rule_score = calculate_rule_based_risk(values_dict)
     
-    # ========== 混合预测：加权平均 ==========
-    # 模型权重0.5，规则权重0.5
+    # ========== 混合预测 ==========
     final_risk = model_risk_calibrated * 0.25 + rule_risk * 0.75
     
-    # 根据风险因素数量动态调整权重
     high_risk_count = 0
     if age_num > 74: high_risk_count += 1
     if nihss_admit_num > 12: high_risk_count += 1
@@ -202,13 +226,11 @@ if predict_btn:
     if agitation >= 1: high_risk_count += 1
     if opt_num > 600: high_risk_count += 1
     
-    # 当高风险因素较多时，增加规则评分的权重
     if high_risk_count >= 4:
         final_risk = model_risk_calibrated * 0.3 + rule_risk * 0.7
     elif high_risk_count <= 1:
         final_risk = model_risk_calibrated * 0.7 + rule_risk * 0.3
     
-    # 最终概率
     risk_prob = final_risk
     
     # 风险等级划分
@@ -307,7 +329,7 @@ if predict_btn:
     """
     risk_analysis_placeholder.markdown(risk_indicators_html, unsafe_allow_html=True)
     
-    # 输入摘要（可折叠）
+    # 输入摘要
     with st.expander("查看完整输入信息"):
         opt_hours = opt_num / 60
         input_summary = pd.DataFrame({
