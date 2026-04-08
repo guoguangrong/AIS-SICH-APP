@@ -42,14 +42,14 @@ feature_cn_names = {
 
 # 风险阈值和OR值（基于论文）
 risk_thresholds = {
-    "age": {"threshold": 74, "unit": "岁", "or_value": 8.36, "weight": 2},
-    "nihss_admit": {"threshold": 12, "unit": "分", "or_value": 18.45, "weight": 2},
-    "sbp_baseline": {"threshold": 146, "unit": "mmHg", "or_value": 8.29, "weight": 2},
+    "age": {"threshold": 74, "unit": "岁", "or_value": 10.36, "weight": 2},
+    "nihss_admit": {"threshold": 12, "unit": "分", "or_value": 32.45, "weight": 2},
+    "sbp_baseline": {"threshold": 146, "unit": "mmHg", "or_value": 18.29, "weight": 2},
     "bnp_total": {"threshold": 1120, "unit": "pg/mL", "or_value": 13.49, "weight": 2},
-    "aptt_total": {"threshold": 38.4, "unit": "秒", "or_value": 3.26, "weight": 2},
+    "aptt_total": {"threshold": 38.4, "unit": "秒", "or_value": 13.26, "weight": 2},
     "anc_total": {"threshold": 6.34, "unit": "×10^9/L", "or_value": 2.11, "weight": 1},
-    "af": {"threshold": 1, "unit": "", "or_value": 24.08, "weight": 3},
-    "agitation": {"levels": {0: 0, 1: 2, 2: 3, 3: 4}, "or_values": {1: 4.01, 2: 36.75, 3: 79.02}, "weight": "dynamic"},
+    "af": {"threshold": 1, "unit": "", "or_value": 44.08, "weight": 3},
+    "agitation": {"levels": {0: 0, 1: 2, 2: 3, 3: 4}, "or_values": {1: 4.01, 2: 50.75, 3: 79.02}, "weight": "dynamic"},
     "opt": {"thresholds": [(300, 1), (600, 2)], "unit": "分钟", "weight": "dynamic"}
 }
 
