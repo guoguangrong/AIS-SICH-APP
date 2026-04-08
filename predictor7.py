@@ -40,40 +40,31 @@ feature_cn_names = {
     "agitation": "躁动情况", "anc_total": "基线中性粒细胞计数", "af": "房颤病史"
 }
 
-# 风险阈值和OR值（基于论文）
-risk_thresholds = {
-    "age": {"threshold": 74, "unit": "岁", "or_value": 10.36, "weight": 2, "description": "年龄 > 74岁 风险升高3.36倍"},
-    "nihss_admit": {"threshold": 12, "unit": "分", "or_value": 32.45, "weight": 2, "description": "NIHSS > 12分 风险升高2.45倍"},
-    "sbp_baseline": {"threshold": 146, "unit": "mmHg", "or_value": 18.29, "weight": 2, "description": "收缩压 > 146mmHg 风险升高3.29倍"},
-    "bnp_total": {"threshold": 1120, "unit": "pg/mL", "or_value": 13.49, "weight": 2, "description": "BNP > 1120pg/mL 风险升高3.49倍"},
-    "aptt_total": {"threshold": 38.4, "unit": "秒", "or_value": 13.26, "weight": 2, "description": "APTT > 38.4秒 风险升高3.26倍"},
-    "anc_total": {"threshold": 6.34, "unit": "×10^9/L", "or_value": 2.11, "weight": 1, "description": "ANC > 6.34 风险升高2.11倍"},
-    "af": {"threshold": 1, "unit": "", "or_value": 44.08, "weight": 3, "description": "房颤患者风险是非房颤者的14倍"},
-    "agitation": {"levels": {0: 0, 1: 2, 2: 3, 3: 4}, "or_values": {1: 4.01, 2: 50.75, 3: 79.02}, "weight": "dynamic", "description": "躁动程度越重，风险越高（剂量-反应关系）"},
-    "opt": {"thresholds": [(300, 1), (600, 2)], "unit": "分钟", "weight": "dynamic", "description": "时间越长，缺血损伤越重，风险越高"}
+# 风险阈值（简化版，只用于判断）
+risk_thresholds_simple = {
+    "age": 74,
+    "nihss_admit": 12,
+    "sbp_baseline": 146,
+    "bnp_total": 1120,
+    "aptt_total": 38.4,
+    "anc_total": 6.34
 }
 
 agitation_map = {0: "无躁动", 1: "轻度躁动", 2: "中度躁动", 3: "重度躁动"}
 
-# CSS样式（将变量字体调大2个字号）
+# CSS样式
 st.markdown("""
 <style>
-    /* 输入框标签字体加大 */
     .stNumberInput label, .stSelectbox label {
         font-size: 18px !important;
         font-weight: 500 !important;
     }
-    
-    /* 输入框数值字体加大 */
     .stNumberInput input {
         font-size: 20px !important;
     }
-    
-    /* 下拉选择框字体加大 */
     .stSelectbox div[data-baseweb="select"] span {
         font-size: 18px !important;
     }
-    
     .prediction-card {
         border-radius: 20px;
         padding: 30px;
@@ -90,22 +81,26 @@ st.markdown("""
     .prediction-advice { font-size: 16px; color: white; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px; margin-top: 15px; }
     .risk-factor-card {
         border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 10px;
+        padding: 12px 15px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8f9fa;
         border-left: 4px solid;
+    }
+    .risk-factor-name {
+        font-weight: 500;
+        font-size: 15px;
+        color: #333;
+    }
+    .risk-factor-value {
+        font-size: 15px;
+        color: #555;
     }
     .risk-factor-high { border-left-color: #eb3349; background: #fff5f5; }
     .risk-factor-mid { border-left-color: #f5576c; background: #fffaf0; }
     .risk-factor-low { border-left-color: #11998e; background: #f0fff4; }
-    .risk-factor-title {
-        font-weight: bold;
-        font-size: 16px;
-        margin-bottom: 5px;
-    }
-    .risk-factor-value {
-        font-size: 14px;
-        color: #6c757d;
-    }
     hr { margin: 20px 0; }
 </style>
 """, unsafe_allow_html=True)
@@ -114,7 +109,7 @@ st.title("急性缺血性脑卒中血管内治疗术后症状性出血转化风�
 st.markdown("### 请填写以下信息，点击预测获取风险评估结果")
 st.markdown("---")
 
-# ========== 三列布局：左边5个，中间4个，右边预测结果 ==========
+# ========== 三列布局 ==========
 col_left, col_middle, col_right = st.columns([1.2, 1, 1])
 
 with col_left:
@@ -143,45 +138,29 @@ def calculate_rule_based_risk(values_dict):
     score = 0
     max_score = 25
     
-    # 年龄
     if values_dict['age'] > 74:
         score += 12
-    
-    # NIHSS评分
     if values_dict['nihss_admit'] > 12:
         score += 19
-    
-    # 收缩压
     if values_dict['sbp_baseline'] > 146:
         score += 13
-    
-    # BNP
     if values_dict['bnp_total'] > 1120:
         score += 17
-    
-    # APTT
     if values_dict['aptt_total'] > 38.4:
         score += 8
-    
-    # ANC
     if values_dict['anc_total'] > 6.34:
         score += 8
-    
-    # 房颤
     if values_dict['af'] == 1:
         score += 10
     
-    # 躁动
     agitation_scores = {0: 0, 1: 19, 2: 22, 3: 25}
     score += agitation_scores.get(values_dict['agitation'], 0)
     
-    # OPT
     if values_dict['opt'] > 600:
         score += 12
     elif values_dict['opt'] > 300:
         score += 10
     
-    # 计算概率（基于训练集的18.2%基线风险）
     baseline_risk = 0.182
     risk_multiplier = 1 + (score / max_score) * 3
     risk_prob = min(0.85, baseline_risk * risk_multiplier)
@@ -257,67 +236,39 @@ if predict_btn:
     </div>
     """, unsafe_allow_html=True)
     
-    # 风险指标分析
-    feature_values_dict = {
-        "age": age_num, "nihss_admit": nihss_admit_num, "sbp_baseline": sbp_baseline_num,
-        "opt": opt_num, "af": af, "agitation": agitation, "bnp_total": bnp_total_num,
-        "aptt_total": aptt_total_num, "anc_total": anc_total_num
-    }
+    # ========== 简化的风险指标分析 ==========
+    # 构建指标列表
+    indicators = [
+        ("年龄", f"{age_num:.0f} 岁", age_num > 74, "🔴", "🟢"),
+        ("入院NIHSS评分", f"{nihss_admit_num:.0f} 分", nihss_admit_num > 12, "🔴", "🟢"),
+        ("基线收缩压", f"{sbp_baseline_num:.0f} mmHg", sbp_baseline_num > 146, "🔴", "🟢"),
+        ("基线BNP", f"{bnp_total_num:.0f} pg/mL", bnp_total_num > 1120, "🔴", "🟢"),
+        ("基线APTT", f"{aptt_total_num:.1f} 秒", aptt_total_num > 38.4, "🔴", "🟢"),
+        ("基线中性粒细胞计数", f"{anc_total_num:.1f} ×10^9/L", anc_total_num > 6.34, "🔴", "🟢"),
+        ("房颤病史", "是" if af == 1 else "否", af == 1, "🔴", "🟢"),
+        ("躁动情况", agitation_map[agitation], agitation >= 1, "🔴" if agitation >= 2 else "🟡", "🟢"),
+        ("发病至穿刺时间", f"{opt_num:.0f} 分钟", opt_num > 600, "🔴" if opt_num > 600 else ("🟡" if opt_num > 300 else "🟢"), "🟢")
+    ]
     
     risk_indicators_html = '<div style="max-height: 500px; overflow-y: auto;">'
     
-    for feature, threshold_info in risk_thresholds.items():
-        value = feature_values_dict.get(feature, 0)
-        cn_name = feature_cn_names.get(feature, feature)
-        
-        is_high_risk = False
-        risk_desc = ""
-        
-        if feature == "af":
-            is_high_risk = (value == 1)
-            risk_desc = "⚠️ 高风险因素" if is_high_risk else "✓ 正常"
-            display_value = "是" if value == 1 else "否"
-        elif feature == "agitation":
-            is_high_risk = (value >= 1)
-            or_values = threshold_info.get("or_values", {})
-            if value == 0:
-                risk_desc = "✓ 正常"
-            elif value == 1:
-                risk_desc = f"⚠️ 轻度风险 (OR={or_values.get(1, 4.01)})"
-            elif value == 2:
-                risk_desc = f"⚠️ 中度风险 (OR={or_values.get(2, 16.75)})"
+    for name, value, is_risk, icon_high, icon_low in indicators:
+        if is_risk:
+            if name == "躁动情况" and agitation == 1:
+                status_icon = "🟡"
+            elif name == "发病至穿刺时间" and 300 < opt_num <= 600:
+                status_icon = "🟡"
             else:
-                risk_desc = f"⚠️ 重度风险 (OR={or_values.get(3, 79.02)})"
-            display_value = agitation_map.get(value, "未知")
-        elif feature == "opt":
-            if value < 300:
-                risk_desc = "✓ 时间较短"
-            elif value < 600:
-                risk_desc = "⚠️ 时间中等"
-            else:
-                risk_desc = "⚠️ 时间较长"
-            display_value = f"{value:.0f} 分钟 ({value/60:.1f} 小时)"
+                status_icon = icon_high
+            card_class = "risk-factor-high" if status_icon == "🔴" else "risk-factor-mid"
         else:
-            threshold = threshold_info["threshold"]
-            unit = threshold_info.get("unit", "")
-            is_high_risk = (value > threshold)
-            or_value = threshold_info.get("or_value", "")
-            risk_desc = f"⚠️ 超过阈值 ({threshold}{unit})，OR={or_value}" if is_high_risk else f"✓ 低于阈值 ({threshold}{unit})"
-            if feature == "anc_total":
-                display_value = f"{value:.1f} {unit}"
-            elif feature == "aptt_total":
-                display_value = f"{value:.1f} {unit}"
-            else:
-                display_value = f"{value:.0f} {unit}".strip()
-        
-        card_class = "risk-factor-high" if is_high_risk else ("risk-factor-mid" if feature == "opt" and value > 300 else "risk-factor-low")
-        status_icon = "🔴" if is_high_risk else ("🟡" if feature == "opt" and value > 300 else "🟢")
-        detail_desc = threshold_info.get("description", "")
+            status_icon = icon_low
+            card_class = "risk-factor-low"
         
         risk_indicators_html += f"""
         <div class="risk-factor-card {card_class}">
-            <div class="risk-factor-title">{status_icon} {cn_name}: {display_value}</div>
-            <div class="risk-factor-value">状态: {risk_desc}<br><span style="color: #6c757d; font-size: 12px;">📋 {detail_desc}</span></div>
+            <span class="risk-factor-name">{status_icon} {name}</span>
+            <span class="risk-factor-value">{value}</span>
         </div>
         """
     
