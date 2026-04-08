@@ -15,13 +15,13 @@ st.set_page_config(
 # 加载模型（使用相对最稳定的 SVM）
 @st.cache_resource
 def load_model():
-    return joblib.load('decision_tree_model.pkl')
+    return joblib.load('svm_model.pkl')
 
 try:
     model = load_model()
     st.success("✅ 模型加载成功")
 except FileNotFoundError:
-    st.error("❌ decision_tree_model.pkl 文件未找到")
+    st.error("❌ svm_model.pkl 文件未找到")
     st.stop()
 except Exception as e:
     st.error(f"❌ 模型加载失败: {e}")
@@ -43,13 +43,13 @@ feature_cn_names = {
 # 风险阈值和OR值（基于论文）
 risk_thresholds = {
     "age": {"threshold": 74, "unit": "岁", "or_value": 3.36, "weight": 2},
-    "nihss_admit": {"threshold": 12, "unit": "分", "or_value": 2.45, "weight": 2},
-    "sbp_baseline": {"threshold": 146, "unit": "mmHg", "or_value": 3.29, "weight": 2},
+    "nihss_admit": {"threshold": 12, "unit": "分", "or_value": 8.45, "weight": 2},
+    "sbp_baseline": {"threshold": 146, "unit": "mmHg", "or_value": 8.29, "weight": 2},
     "bnp_total": {"threshold": 1120, "unit": "pg/mL", "or_value": 3.49, "weight": 2},
     "aptt_total": {"threshold": 38.4, "unit": "秒", "or_value": 3.26, "weight": 2},
     "anc_total": {"threshold": 6.34, "unit": "×10^9/L", "or_value": 2.11, "weight": 1},
-    "af": {"threshold": 1, "unit": "", "or_value": 14.08, "weight": 3},
-    "agitation": {"levels": {0: 0, 1: 2, 2: 3, 3: 4}, "or_values": {1: 4.01, 2: 16.75, 3: 79.02}, "weight": "dynamic"},
+    "af": {"threshold": 1, "unit": "", "or_value": 24.08, "weight": 3},
+    "agitation": {"levels": {0: 0, 1: 2, 2: 3, 3: 4}, "or_values": {1: 4.01, 2: 26.75, 3: 79.02}, "weight": "dynamic"},
     "opt": {"thresholds": [(300, 1), (600, 2)], "unit": "分钟", "weight": "dynamic"}
 }
 
@@ -112,7 +112,7 @@ def calculate_rule_based_risk(values_dict):
     
     # 年龄
     if values_dict['age'] > 74:
-        score += 3
+        score += 2
     
     # NIHSS评分
     if values_dict['nihss_admit'] > 12:
@@ -128,18 +128,18 @@ def calculate_rule_based_risk(values_dict):
     
     # APTT
     if values_dict['aptt_total'] > 38.4:
-        score += 3
+        score += 2
     
     # ANC
     if values_dict['anc_total'] > 6.34:
-        score += 2
+        score += 1
     
     # 房颤
     if values_dict['af'] == 1:
         score += 4
     
     # 躁动
-    agitation_scores = {0: 0, 1: 2, 2: 3, 3: 4}
+    agitation_scores = {0: 0, 1: 4, 2: 5, 3: 6}
     score += agitation_scores.get(values_dict['agitation'], 0)
     
     # OPT
