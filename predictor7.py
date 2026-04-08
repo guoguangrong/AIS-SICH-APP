@@ -33,23 +33,6 @@ feature_names = [
     "aptt_total", "age", "agitation", "anc_total", "af"
 ]
 
-# 特征中文名称
-feature_cn_names = {
-    "bnp_total": "基线BNP", "sbp_baseline": "基线收缩压", "opt": "发病至穿刺时间",
-    "nihss_admit": "入院NIHSS评分", "aptt_total": "基线APTT", "age": "年龄",
-    "agitation": "躁动情况", "anc_total": "基线中性粒细胞计数", "af": "房颤病史"
-}
-
-# 风险阈值
-risk_thresholds_simple = {
-    "age": 74,
-    "nihss_admit": 12,
-    "sbp_baseline": 146,
-    "bnp_total": 1120,
-    "aptt_total": 38.4,
-    "anc_total": 6.34
-}
-
 agitation_map = {0: "无躁动", 1: "轻度躁动", 2: "中度躁动", 3: "重度躁动"}
 
 # CSS样式
@@ -80,29 +63,6 @@ st.markdown("""
     .prediction-level { font-size: 28px; font-weight: bold; color: white; margin-bottom: 20px; }
     .prediction-advice { font-size: 16px; color: white; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px; margin-top: 15px; }
     hr { margin: 20px 0; }
-    .risk-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 12px;
-        margin-bottom: 8px;
-        border-radius: 10px;
-        background-color: #f8f9fa;
-        border-left: 4px solid;
-    }
-    .risk-name {
-        font-size: 14px;
-        font-weight: 500;
-        color: #333;
-    }
-    .risk-value {
-        font-size: 14px;
-        color: #555;
-        font-weight: 500;
-    }
-    .risk-high { border-left-color: #eb3349; background-color: #fff5f5; }
-    .risk-mid { border-left-color: #f5576c; background-color: #fffaf0; }
-    .risk-low { border-left-color: #11998e; background-color: #f0fff4; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -237,63 +197,89 @@ if predict_btn:
     </div>
     """, unsafe_allow_html=True)
     
-    # ========== 简化的风险指标分析 - 使用st.markdown直接生成 ==========
+    # ========== 简化的风险指标分析 - 使用st.columns ==========
     
-    # 定义指标列表
-    indicators = [
-        ("年龄", f"{age_num:.0f} 岁", age_num > 74, age_num > 74, 74),
-        ("入院NIHSS评分", f"{nihss_admit_num:.0f} 分", nihss_admit_num > 12, nihss_admit_num > 12, 12),
-        ("基线收缩压", f"{sbp_baseline_num:.0f} mmHg", sbp_baseline_num > 146, sbp_baseline_num > 146, 146),
-        ("基线BNP", f"{bnp_total_num:.0f} pg/mL", bnp_total_num > 1120, bnp_total_num > 1120, 1120),
-        ("基线APTT", f"{aptt_total_num:.1f} 秒", aptt_total_num > 38.4, aptt_total_num > 38.4, 38.4),
-        ("基线中性粒细胞计数", f"{anc_total_num:.1f} ×10^9/L", anc_total_num > 6.34, anc_total_num > 6.34, 6.34),
-        ("房颤病史", "是" if af == 1 else "否", af == 1, af == 1, None),
-        ("躁动情况", agitation_map[agitation], agitation >= 1, agitation >= 2, None),
-        ("发病至穿刺时间", f"{opt_num:.0f} 分钟", opt_num > 600, opt_num > 600, 600)
-    ]
+    # 定义指标数据
+    indicators = []
     
-    # 构建HTML
-    risk_html = '<div style="max-height: 500px; overflow-y: auto;">'
+    # 年龄
+    if age_num > 74:
+        indicators.append(("🔴 年龄", f"{age_num:.0f} 岁"))
+    else:
+        indicators.append(("🟢 年龄", f"{age_num:.0f} 岁"))
     
-    for name, value, is_mid, is_high, threshold in indicators:
-        if is_high:
-            icon = "🔴"
-            css_class = "risk-high"
-        elif is_mid:
-            icon = "🟡"
-            css_class = "risk-mid"
-        else:
-            icon = "🟢"
-            css_class = "risk-low"
+    # NIHSS评分
+    if nihss_admit_num > 12:
+        indicators.append(("🔴 入院NIHSS评分", f"{nihss_admit_num:.0f} 分"))
+    else:
+        indicators.append(("🟢 入院NIHSS评分", f"{nihss_admit_num:.0f} 分"))
+    
+    # 收缩压
+    if sbp_baseline_num > 146:
+        indicators.append(("🔴 基线收缩压", f"{sbp_baseline_num:.0f} mmHg"))
+    else:
+        indicators.append(("🟢 基线收缩压", f"{sbp_baseline_num:.0f} mmHg"))
+    
+    # BNP
+    if bnp_total_num > 1120:
+        indicators.append(("🔴 基线BNP", f"{bnp_total_num:.0f} pg/mL"))
+    else:
+        indicators.append(("🟢 基线BNP", f"{bnp_total_num:.0f} pg/mL"))
+    
+    # APTT
+    if aptt_total_num > 38.4:
+        indicators.append(("🔴 基线APTT", f"{aptt_total_num:.1f} 秒"))
+    else:
+        indicators.append(("🟢 基线APTT", f"{aptt_total_num:.1f} 秒"))
+    
+    # ANC
+    if anc_total_num > 6.34:
+        indicators.append(("🔴 基线中性粒细胞计数", f"{anc_total_num:.1f} ×10^9/L"))
+    else:
+        indicators.append(("🟢 基线中性粒细胞计数", f"{anc_total_num:.1f} ×10^9/L"))
+    
+    # 房颤
+    if af == 1:
+        indicators.append(("🔴 房颤病史", "是"))
+    else:
+        indicators.append(("🟢 房颤病史", "否"))
+    
+    # 躁动
+    if agitation == 0:
+        indicators.append(("🟢 躁动情况", agitation_map[agitation]))
+    elif agitation == 1:
+        indicators.append(("🟡 躁动情况", agitation_map[agitation]))
+    else:
+        indicators.append(("🔴 躁动情况", agitation_map[agitation]))
+    
+    # OPT
+    if opt_num <= 300:
+        indicators.append(("🟢 发病至穿刺时间", f"{opt_num:.0f} 分钟"))
+    elif opt_num <= 600:
+        indicators.append(("🟡 发病至穿刺时间", f"{opt_num:.0f} 分钟"))
+    else:
+        indicators.append(("🔴 发病至穿刺时间", f"{opt_num:.0f} 分钟"))
+    
+    # 使用Streamlit原生组件显示
+    with risk_analysis_placeholder.container():
+        st.markdown("##### 风险指标")
         
-        risk_html += f'''
-        <div class="risk-item {css_class}">
-            <span class="risk-name">{icon} {name}</span>
-            <span class="risk-value">{value}</span>
-        </div>
-        '''
-    
-    risk_html += '</div>'
-    risk_html += f'''
-    <div style="background: #e8f4f8; border-radius: 12px; padding: 12px; margin-top: 10px;">
-        <div style="font-size: 13px; color: #2c3e50;"><strong>💡 综合建议：</strong><br>{advice}</div>
-    </div>
-    '''
-    
-    risk_analysis_placeholder.markdown(risk_html, unsafe_allow_html=True)
-    
-    # 输入摘要
-    with st.expander("查看完整输入信息"):
-        opt_hours = opt_num / 60
-        input_summary = pd.DataFrame({
-            "变量名称": ["年龄", "入院NIHSS评分", "基线收缩压", "发病至穿刺时间", "房颤病史",
-                        "躁动情况", "基线BNP", "基线APTT", "基线ANC"],
-            "输入值": [f"{age_num:.0f} 岁", f"{nihss_admit_num:.0f} 分", f"{sbp_baseline_num:.0f} mmHg",
-                      f"{opt_num:.0f} 分钟 ({opt_hours:.1f} 小时)", "是" if af == 1 else "否",
-                      agitation_map[agitation], f"{bnp_total_num:.0f} pg/mL",
-                      f"{aptt_total_num:.1f} 秒", f"{anc_total_num:.1f} ×10^9/L"]
-        })
-        st.dataframe(input_summary, use_container_width=True, hide_index=True)
+        # 分成两列显示
+        col1, col2 = st.columns(2)
+        
+        # 前5个放左边
+        with col1:
+            for i in range(5):
+                if i < len(indicators):
+                    st.write(f"{indicators[i][0]}: {indicators[i][1]}")
+        
+        # 后4个放右边
+        with col2:
+            for i in range(5, len(indicators)):
+                st.write(f"{indicators[i][0]}: {indicators[i][1]}")
+        
+        st.markdown("---")
+        st.info(f"💡 {advice}")
 
 else:
     prediction_placeholder.markdown("""
@@ -303,12 +289,7 @@ else:
         <div style="font-size: 13px; color: #adb5bd; margin-top: 8px;">将在此处显示风险评估结果</div>
     </div>
     """, unsafe_allow_html=True)
-    risk_analysis_placeholder.markdown("""
-    <div style="background: #f8f9fa; border-radius: 20px; padding: 40px 20px; text-align: center; border: 2px dashed #dee2e6;">
-        <div style="font-size: 36px; margin-bottom: 15px;">🔍</div>
-        <div style="font-size: 16px; color: #6c757d;">预测后将显示各风险指标的分析</div>
-    </div>
-    """, unsafe_allow_html=True)
+    risk_analysis_placeholder.empty()
 
 st.markdown("---")
 st.caption("注：本预测结果仅供参考，不能替代专业医疗建议。")
