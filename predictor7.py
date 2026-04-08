@@ -28,9 +28,9 @@ except Exception as e:
 
 # 读取 CSV 数据文件（将 pd.read_excel 改为 pd.read_csv）
 try:
-    test_dataset = pd.read_csv('data.csv', encoding='utf-8')
+    test_dataset = pd.read_csv('test_data_raw.csv', encoding='utf-8')
 except FileNotFoundError:
-    st.error("❌ data.csv 文件未找到，请确保该文件存在于项目目录中")
+    st.error("❌ test_data_raw.csv 文件未找到，请确保该文件存在于项目目录中")
     st.stop()
 except Exception as e:
     st.error(f"❌ 数据文件加载失败: {e}")
