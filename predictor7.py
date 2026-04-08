@@ -82,26 +82,34 @@ st.title("急性缺血性脑卒中血管内治疗术后症状性出血转化风�
 st.markdown("### 请填写以下信息，点击预测获取风险评估结果")
 st.markdown("---")
 
-# ========== 修改布局：左边4个，右边3个输入框 + 2个选择框 ==========
+# ========== 布局：左边5个，右边4个 ==========
 left_col, right_col = st.columns([1.2, 0.8])
 
 with left_col:
-    # 左边区域 - 4个输入框
+    # 左边区域 - 5个输入框
     bnp_total_num = st.number_input("基线BNP (pg/mL)", min_value=0.0, max_value=50000.0, value=476.0, step=10.0, format="%.0f")
     sbp_baseline_num = st.number_input("基线收缩压 (mmHg)", min_value=0.0, max_value=300.0, value=130.0, step=1.0, format="%.0f")
     opt_num = st.number_input("发病至穿刺时间 (分钟)", min_value=0.0, max_value=30000.0, value=450.0, step=5.0, format="%.0f")
     nihss_admit_num = st.number_input("入院NIHSS评分 (分)", min_value=0.0, max_value=42.0, value=10.0, step=1.0, format="%.0f")
+    anc_total_num = st.number_input("基线中性粒细胞计数 (×10^9/L)", min_value=0.0, max_value=50.0, value=8.8, step=0.5, format="%.1f")
 
 with right_col:
-    # 右边区域 - 3个输入框 + 2个选择框
+    # 右边区域 - 4个输入框（包含预测结果）
     aptt_total_num = st.number_input("基线APTT (秒)", min_value=0.0, max_value=12000.0, value=36.9, step=1.0, format="%.1f")
     age_num = st.number_input("年龄 (岁)", min_value=0.0, max_value=220.0, value=65.0, step=1.0, format="%.0f")
-    anc_total_num = st.number_input("基线中性粒细胞计数 (×10^9/L)", min_value=0.0, max_value=50.0, value=8.8, step=0.5, format="%.1f")
     agitation = st.selectbox("术后躁动情况", options=[0, 1, 2, 3], format_func=lambda x: agitation_map[x])
     af = st.selectbox("房颤病史", options=[0, 1], format_func=lambda x: "是" if x == 1 else "否")
-
-st.markdown("---")
-predict_btn = st.button("预测", type="primary", use_container_width=True)
+    
+    st.markdown("---")
+    predict_btn = st.button("预测", type="primary", use_container_width=True)
+    
+    # 预测结果显示区域（在右侧按钮下方）
+    st.markdown("### 📊 预测结果")
+    prediction_placeholder = st.empty()
+    
+    # 风险指标分析显示区域（在预测结果下方）
+    st.markdown("### 🔍 风险指标分析")
+    risk_analysis_placeholder = st.empty()
 
 # 定义基于规则的评分函数
 def calculate_rule_based_risk(values_dict):
@@ -153,12 +161,6 @@ def calculate_rule_based_risk(values_dict):
     risk_prob = min(0.85, baseline_risk * risk_multiplier)
     
     return risk_prob, score
-
-# 预测结果显示区域（移到按钮下方）
-st.markdown("### 📊 预测结果")
-prediction_placeholder = st.empty()
-st.markdown("### 🔍 风险指标分析")
-risk_analysis_placeholder = st.empty()
 
 if predict_btn:
     feature_values = [bnp_total_num, sbp_baseline_num, opt_num, nihss_admit_num,
