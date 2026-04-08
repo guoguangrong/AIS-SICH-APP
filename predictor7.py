@@ -124,7 +124,7 @@ def calculate_rule_based_risk(values_dict):
     
     # BNP
     if values_dict['bnp_total'] > 1120:
-        score += 3
+        score += 17
     
     # APTT
     if values_dict['aptt_total'] > 38.4:
@@ -136,17 +136,17 @@ def calculate_rule_based_risk(values_dict):
     
     # 房颤
     if values_dict['af'] == 1:
-        score += 10
+        score += 15
     
     # 躁动
-    agitation_scores = {0: 0, 1: 14, 2: 15, 3: 16}
+    agitation_scores = {0: 0, 1: 15, 2: 19, 3: 23}
     score += agitation_scores.get(values_dict['agitation'], 0)
     
     # OPT
     if values_dict['opt'] > 600:
-        score += 2
+        score += 12
     elif values_dict['opt'] > 300:
-        score += 1
+        score += 9
     
     # 计算概率（基于训练集的18.2%基线风险）
     baseline_risk = 0.182
@@ -214,15 +214,15 @@ with right_col:
         # 风险等级划分
         if risk_prob < 0.30:
             pred_class = "低风险"
-            advice = f"混合模型预测风险概率为 {risk_prob:.1%}（模型:{model_risk_calibrated:.1%}，规则:{rule_risk:.1%}），属于低风险。建议定期随访。"
+            advice = f"模型预测您的症状性出血风险概率为 {risk_prob:.1%}，属于低风险。建议继续保持当前治疗方案，定期随访。"
             risk_class = "risk-low"
         elif risk_prob < 0.70:
             pred_class = "中风险"
-            advice = f"混合模型预测风险概率为 {risk_prob:.1%}（模型:{model_risk_calibrated:.1%}，规则:{rule_risk:.1%}），属于中风险。建议密切观察。"
+            advice = f"模型预测您的症状性出血风险概率为 {risk_prob:.1%}，属于中风险。建议密切观察，遵医嘱进行相关检查。"
             risk_class = "risk-medium"
         else:
             pred_class = "高风险"
-            advice = f"混合模型预测风险概率为 {risk_prob:.1%}（模型:{model_risk_calibrated:.1%}，规则:{rule_risk:.1%}），属于高风险。建议立即就医。"
+            advice = f"模型预测您的症状性出血风险概率为 {risk_prob:.1%}，属于高风险。建议立即就医，加强监测和预防措施。"
             risk_class = "risk-high"
         
         # 显示预测结果
@@ -232,17 +232,6 @@ with right_col:
             <div class="prediction-prob">{risk_prob:.1%}</div>
             <div class="prediction-level">{pred_class}</div>
             <div class="prediction-advice">💡 {advice}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # 显示混合预测详情
-        st.markdown(f"""
-        <div style="background: #f0f0f0; border-radius: 12px; padding: 12px; margin-top: 10px;">
-            <div style="font-size: 13px; color: #2c3e50;">
-                <strong>🔬 混合预测详情：</strong><br>
-                📊 模型预测: {model_risk_calibrated:.1%} | 📋 规则评分: {rule_risk:.1%} (得分: {rule_score}/25)<br>
-                ⚠️ 高风险因素数量: {high_risk_count} 个
-            </div>
         </div>
         """, unsafe_allow_html=True)
         
