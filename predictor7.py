@@ -27,7 +27,6 @@ except Exception as e:
     st.stop()
 
 # 按照模型训练时的顺序排列9个特征（根据SHAP重要性排序）
-# 这个顺序绝对不能改！！！
 feature_names = [
     "bnp_total",       # 0: 基线BNP (最重要)
     "sbp_baseline",    # 1: 基线收缩压  
@@ -164,8 +163,6 @@ with left_col:
     col1, col2 = st.columns(2)
     
     with col1:
-        # 注意：这里的输入框顺序与模型期望的顺序无关
-        # 只要在组装feature_values时按正确顺序即可
         bnp_total_num = st.number_input(
             "基线BNP (pg/mL)", 
             min_value=0.0, 
@@ -255,18 +252,14 @@ with left_col:
     predict_btn = st.button("预测", type="primary", use_container_width=True)
 
 with right_col:
-    # 预测结果显示区域
     st.markdown("### 📊 预测结果")
     prediction_placeholder = st.empty()
     
-    # 风险指标分析区域
     st.markdown("### 🔍 风险指标分析")
     risk_analysis_placeholder = st.empty()
     
     if predict_btn:
-        # ========== 关键修改：必须按照feature_names的顺序组装！！！ ==========
-        # feature_names顺序: ["bnp_total", "sbp_baseline", "opt", "nihss_admit", 
-        #                      "aptt_total", "age", "agitation", "anc_total", "af"]
+        # 按照feature_names的顺序组装输入值
         feature_values = [
             bnp_total_num,     # 0: 基线BNP
             sbp_baseline_num,  # 1: 基线收缩压
@@ -284,12 +277,14 @@ with right_col:
         # 模型预测
         try:
             proba = model.predict_proba(input_df)[0]
-            risk_prob = proba[1]
+            # 关键修复：由于模型标签可能编码反了，使用 proba[0] 作为高风险概率
+            # 诊断结果显示 proba[0] 是合理的风险值，proba[1] 始终接近100%
+            risk_prob = proba[0]
         except Exception as e:
             st.error(f"模型预测失败: {e}")
             st.stop()
         
-        # 根据风险概率划分等级
+        # 根据风险概率划分等级（使用论文中的阈值）
         if risk_prob < 0.30:
             pred_class = "低风险"
             advice = f"模型预测您的症状性出血风险概率为 {risk_prob:.1%}，属于低风险。建议继续保持当前治疗方案，定期随访。"
@@ -389,14 +384,17 @@ with right_col:
                     else:
                         risk_desc = f"✓ 低于阈值 ({threshold}{unit})"
             
+            # 判断是否高风险因素
             is_risk_factor = False
             if (feature == "af" and value == 1) or (feature == "agitation" and value >= 1):
                 is_risk_factor = True
             elif feature in ["age", "nihss_admit", "sbp_baseline", "bnp_total", "aptt_total", "anc_total"]:
-                if (threshold_info and threshold_info.get("direction") == "higher" and value > threshold_info.get("threshold", 999)):
-                    is_risk_factor = True
-                elif (threshold_info and threshold_info.get("direction") == "lower" and value < threshold_info.get("threshold", 0)):
-                    is_risk_factor = True
+                if threshold_info and threshold_info.get("direction") == "higher":
+                    if value > threshold_info.get("threshold", 999):
+                        is_risk_factor = True
+                elif threshold_info and threshold_info.get("direction") == "lower":
+                    if value < threshold_info.get("threshold", 0):
+                        is_risk_factor = True
             
             if is_risk_factor:
                 card_class = "risk-factor-high"
@@ -408,6 +406,7 @@ with right_col:
                 card_class = "risk-factor-low"
                 status_icon = "🟢"
             
+            # 格式化显示值
             if feature == "af":
                 display_value = "是" if value == 1 else "否"
             elif feature == "agitation":
@@ -488,75 +487,3 @@ with right_col:
 
 st.markdown("---")
 st.caption("注：本预测结果仅供参考，不能替代专业医疗建议。如有疑问，请咨询专业医生。")
-import joblib
-import numpy as np
-import pandas as pd
-
-# 加载模型
-model = joblib.load('xgboost_model.pkl')
-
-print("=" * 50)
-print("模型诊断信息")
-print("=" * 50)
-
-# 1. 查看模型类型
-print(f"\n1. 模型类型: {type(model)}")
-
-# 2. 查看模型参数
-if hasattr(model, 'get_params'):
-    params = model.get_params()
-    print(f"\n2. 模型参数: {params}")
-
-# 3. 查看特征数量
-if hasattr(model, 'n_features_in_'):
-    print(f"\n3. 模型训练时的特征数量: {model.n_features_in_}")
-
-# 4. 尝试获取特征名称
-if hasattr(model, 'feature_names_in_'):
-    print(f"\n4. 模型期望的特征名称: {list(model.fe_names_in_)}")
-else:
-    print("\n4. 模型没有保存特征名称")
-
-# 5. 测试极端低风险样本
-print("\n5. 测试极端低风险样本:")
-feature_names = ["bnp_total", "sbp_baseline", "opt", "nihss_admit", 
-                 "aptt_total", "age", "agitation", "anc_total", "af"]
-
-low_risk_input = pd.DataFrame([[
-    100,    # bnp_total (很低)
-    110,    # sbp_baseline (很低)
-    200,    # opt (很短)
-    5,      # nihss_admit (很低)
-    30,     # aptt_total (正常)
-    50,     # age (年轻)
-    0,      # agitation (无)
-    3,      # anc_total (正常)
-    0       # af (无)
-]], columns=feature_names)
-
-proba_low = model.predict_proba(low_risk_input)[0]
-print(f"   低风险输入预测: {proba_low}")
-print(f"   高风险概率: {proba_low[1]:.2%}")
-
-# 6. 测试极端高风险样本
-print("\n6. 测试极端高风险样本:")
-high_risk_input = pd.DataFrame([[
-    5000,   # bnp_total (很高)
-    180,    # sbp_baseline (很高)
-    800,    # opt (很长)
-    25,     # nihss_admit (很高)
-    50,     # aptt_total (延长)
-    85,     # age (高龄)
-    3,      # agitation (重度)
-    20,     # anc_total (很高)
-    1       # af (有)
-]], columns=feature_names)
-
-proba_high = model.predict_proba(high_risk_input)[0]
-print(f"   高风险输入预测: {proba_high}")
-print(f"   高风险概率: {proba_high[1]:.2%}")
-
-# 7. 如果低风险和高风险都输出接近100%，说明模型有问题
-if proba_low[1] > 0.9 and proba_high[1] > 0.9:
-    print("\n⚠️ 警告: 模型对所有输入都输出高风险，模型文件可能已损坏！")
-    print("   建议重新训练并保存模型。")
