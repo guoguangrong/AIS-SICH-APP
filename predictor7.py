@@ -488,3 +488,75 @@ with right_col:
 
 st.markdown("---")
 st.caption("注：本预测结果仅供参考，不能替代专业医疗建议。如有疑问，请咨询专业医生。")
+import joblib
+import numpy as np
+import pandas as pd
+
+# 加载模型
+model = joblib.load('xgboost_model.pkl')
+
+print("=" * 50)
+print("模型诊断信息")
+print("=" * 50)
+
+# 1. 查看模型类型
+print(f"\n1. 模型类型: {type(model)}")
+
+# 2. 查看模型参数
+if hasattr(model, 'get_params'):
+    params = model.get_params()
+    print(f"\n2. 模型参数: {params}")
+
+# 3. 查看特征数量
+if hasattr(model, 'n_features_in_'):
+    print(f"\n3. 模型训练时的特征数量: {model.n_features_in_}")
+
+# 4. 尝试获取特征名称
+if hasattr(model, 'feature_names_in_'):
+    print(f"\n4. 模型期望的特征名称: {list(model.fe_names_in_)}")
+else:
+    print("\n4. 模型没有保存特征名称")
+
+# 5. 测试极端低风险样本
+print("\n5. 测试极端低风险样本:")
+feature_names = ["bnp_total", "sbp_baseline", "opt", "nihss_admit", 
+                 "aptt_total", "age", "agitation", "anc_total", "af"]
+
+low_risk_input = pd.DataFrame([[
+    100,    # bnp_total (很低)
+    110,    # sbp_baseline (很低)
+    200,    # opt (很短)
+    5,      # nihss_admit (很低)
+    30,     # aptt_total (正常)
+    50,     # age (年轻)
+    0,      # agitation (无)
+    3,      # anc_total (正常)
+    0       # af (无)
+]], columns=feature_names)
+
+proba_low = model.predict_proba(low_risk_input)[0]
+print(f"   低风险输入预测: {proba_low}")
+print(f"   高风险概率: {proba_low[1]:.2%}")
+
+# 6. 测试极端高风险样本
+print("\n6. 测试极端高风险样本:")
+high_risk_input = pd.DataFrame([[
+    5000,   # bnp_total (很高)
+    180,    # sbp_baseline (很高)
+    800,    # opt (很长)
+    25,     # nihss_admit (很高)
+    50,     # aptt_total (延长)
+    85,     # age (高龄)
+    3,      # agitation (重度)
+    20,     # anc_total (很高)
+    1       # af (有)
+]], columns=feature_names)
+
+proba_high = model.predict_proba(high_risk_input)[0]
+print(f"   高风险输入预测: {proba_high}")
+print(f"   高风险概率: {proba_high[1]:.2%}")
+
+# 7. 如果低风险和高风险都输出接近100%，说明模型有问题
+if proba_low[1] > 0.9 and proba_high[1] > 0.9:
+    print("\n⚠️ 警告: 模型对所有输入都输出高风险，模型文件可能已损坏！")
+    print("   建议重新训练并保存模型。")
